@@ -63,7 +63,3 @@ SIMULATION_CONFIG = {
     'show_each_hand': False,
     'verbose_output': True
 }
-
-# Rank mappings for easier understanding
-RANK_NAMES = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-SUIT_NAMES = ['c', 'd', 'h', 's']  # clubs, diamonds, hearts, spades

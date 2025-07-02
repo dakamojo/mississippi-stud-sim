@@ -7,226 +7,36 @@ from config import (
     STRATEGY_CONFIG,
     SIMULATION_CONFIG
 )
+from strategies import PointStrategy, ConservativeStrategy, OptimalStrategy
 
 # Global counter for hand class outcomes
 hand_class_counter = {outcome: 0 for outcome in HAND_OUTCOMES}
 
-class PointStrategy:
+def card_points(card):
     """
-    The Point Strategy for Mississippi Stud betting decisions.
-    This strategy assigns point values to cards and makes betting decisions
-    based on hand strength and accumulated points.
+    Returns the point value of a card for Mississippi Stud strategy:
+    - 0 if the card is low (2-5)
+    - 1 if the card is medium (6-10)
+    - 2 if the card is high (J-A)
+    Args:
+        card (int): The integer-encoded card from deuces.
+    Returns:
+        int: The point value of the card.
     """
-    
-    def __init__(self, config=None):
-        """Initialize the Point Strategy with configuration."""
-        self.config = config or STRATEGY_CONFIG
-    
-    def eval_step_1(self, hand):
-        """
-        Evaluate the player's hand after the first two cards are dealt (step 1).
-        Args:
-            hand (list): The player's hand (list of two cards).
-        Returns:
-            str: 'fold', 'bet1', or 'bet3' based on the hand.
-        """
-        card1, card2 = hand
-        rank1 = card1 % 13
-        rank2 = card2 % 13
-        
-        if rank1 == rank2:
-            if rank1 >= self.config['min_push_pair_rank']:
-                return 'bet3'  # Pair of sixes or higher
-            else:
-                return 'bet1'  # Lower pairs
-        elif self._card_points(card1) + self._card_points(card2) >= self.config['step1_bet_threshold']:
-            return 'bet1'
-        else:
-            return 'fold'
-
-    def eval_step_2(self, hand):
-        """
-        Evaluate the player's hand after the third card is dealt (step 2).
-        Args:
-            hand (list): The player's hand (list of three cards).
-        Returns:
-            str: 'fold', 'bet1', or 'bet3' based on the hand.
-        """
-        card1, card2, card3 = hand
-        ranks = [card1 % 13, card2 % 13, card3 % 13]
-        # Check for trips first
-        if ranks[0] == ranks[1] == ranks[2]:
-            return 'bet3'  # Trips
-        # Check for a pair of sixes or better
-        for i in range(3):
-            for j in range(i+1, 3):
-                if ranks[i] == ranks[j] and ranks[i] >= self.config['min_push_pair_rank']:
-                    return 'bet3'  # Pair of sixes or higher
-        # Check for any other pair
-        for i in range(3):
-            for j in range(i+1, 3):
-                if ranks[i] == ranks[j]:
-                    return 'bet1'  # Any other pair
-        if self._card_points(card1) + self._card_points(card2) + self._card_points(card3) >= self.config['step2_bet_threshold']:
-            return 'bet1'
-        else:
-            return 'fold'
-
-    def eval_step_3(self, hand):
-        """
-        Evaluate the player's hand after the fourth card is dealt (step 3).
-        Args:
-            hand (list): The player's hand (list of four cards).
-        Returns:
-            str: 'fold', 'bet1', or 'bet3' based on the hand.
-        """
-        card1, card2, card3, card4 = hand
-        ranks = [card1 % 13, card2 % 13, card3 % 13, card4 % 13]
-        # Check for quads
-        if len(set(ranks)) == 1:
-            return 'bet3'  # Four of a kind
-        # Check for trips
-        for i in range(4):
-            for j in range(i+1, 4):
-                for k in range(j+1, 4):
-                    if ranks[i] == ranks[j] == ranks[k]:
-                        return 'bet3'  # Trips
-        # Check for a pair of sixes or better
-        for i in range(4):
-            for j in range(i+1, 4):
-                if ranks[i] == ranks[j] and ranks[i] >= self.config['min_push_pair_rank']:
-                    return 'bet3'  # Pair of sixes or higher
-        # Check for any other pair
-        for i in range(4):
-            for j in range(i+1, 4):
-                if ranks[i] == ranks[j]:
-                    return 'bet1'  # Any other pair
-        if sum(self._card_points(card) for card in hand) >= self.config['step3_bet_threshold']:
-            return 'bet1'
-        else:
-            return 'fold'
-
-    def _card_points(self, card):
-        """
-        Returns the point value of a card for Mississippi Stud strategy:
-        - 0 if the card is low (2-5)
-        - 1 if the card is medium (6-10)
-        - 2 if the card is high (J-A)
-        Args:
-            card (int): The integer-encoded card from deuces.
-        Returns:
-            int: The point value of the card.
-        """
-        rank = card % 13
-        # deuces: 0=2, 1=3, 2=4, 3=5, 4=6, 5=7, 6=8, 7=9, 8=10, 9=J, 10=Q, 11=K, 12=A
-        if 4 <= rank <= 8:  # 6-10
-            return self.config['card_points']['push_cards']
-        elif rank >= 9:  # J-A
-            return self.config['card_points']['high_cards']
-        else:  # 2-5
-            return self.config['card_points']['low_cards']
-
-class ConservativeStrategy:
-    """
-    A Conservative Strategy for Mississippi Stud betting decisions.
-    This strategy is more conservative than the Point Strategy and only
-    makes larger bets with very strong hands.
-    """
-    
-    def __init__(self, config=None):
-        """Initialize the Conservative Strategy with configuration."""
-        self.config = config or STRATEGY_CONFIG
-    
-    def eval_step_1(self, hand):
-        """Conservative evaluation for step 1 - only bet on strong hands."""
-        card1, card2 = hand
-        rank1 = card1 % 13
-        rank2 = card2 % 13
-        
-        # Only bet big on high pairs (10s or better)
-        if rank1 == rank2:
-            if rank1 >= 8:  # 10s or better
-                return 'bet3'
-            elif rank1 >= self.config['min_push_pair_rank']:
-                return 'bet1'  # 6-9 pairs
-            else:
-                return 'fold'  # Lower pairs
-        # Very conservative - only bet on two high cards
-        elif rank1 >= 9 and rank2 >= 9:  # Both Jacks or higher
-            return 'bet1'
-        else:
-            return 'fold'
-    
-    def eval_step_2(self, hand):
-        """Conservative evaluation for step 2."""
-        card1, card2, card3 = hand
-        ranks = [card1 % 13, card2 % 13, card3 % 13]
-        
-        # Check for trips
-        if ranks[0] == ranks[1] == ranks[2]:
-            return 'bet3'
-        # Check for high pairs only
-        for i in range(3):
-            for j in range(i+1, 3):
-                if ranks[i] == ranks[j]:
-                    if ranks[i] >= 8:  # 10s or better
-                        return 'bet3'
-                    elif ranks[i] >= self.config['min_push_pair_rank']:
-                        return 'bet1'  # 6-9 pairs
-                    else:
-                        return 'fold'  # Lower pairs
-        # Very conservative - only continue with 3 high cards
-        high_cards = sum(1 for rank in ranks if rank >= 9)
-        if high_cards >= 3:
-            return 'bet1'
-        else:
-            return 'fold'
-    
-    def eval_step_3(self, hand):
-        """Conservative evaluation for step 3."""
-        card1, card2, card3, card4 = hand
-        ranks = [card1 % 13, card2 % 13, card3 % 13, card4 % 13]
-        
-        # Check for quads
-        if len(set(ranks)) == 1:
-            return 'bet3'
-        # Check for trips
-        for i in range(4):
-            for j in range(i+1, 4):
-                for k in range(j+1, 4):
-                    if ranks[i] == ranks[j] == ranks[k]:
-                        return 'bet3'
-        # Check for high pairs only
-        for i in range(4):
-            for j in range(i+1, 4):
-                if ranks[i] == ranks[j]:
-                    if ranks[i] >= 8:  # 10s or better
-                        return 'bet3'
-                    elif ranks[i] >= self.config['min_push_pair_rank']:
-                        return 'bet1'  # 6-9 pairs
-                    else:
-                        return 'fold'  # Lower pairs
-        # Very conservative - only continue with mostly high cards
-        high_cards = sum(1 for rank in ranks if rank >= 9)
-        if high_cards >= 3:
-            return 'bet1'
-        else:
-            return 'fold'
-    
-    def _card_points(self, card):
-        """Use same point system as Point Strategy."""
-        rank = card % 13
-        if 4 <= rank <= 8:  # 6-10
-            return self.config['card_points']['push_cards']
-        elif rank >= 9:  # J-A
-            return self.config['card_points']['high_cards']
-        else:  # 2-5
-            return self.config['card_points']['low_cards']
+    rank = card % 13
+    # deuces: 0=2, 1=3, 2=4, 3=5, 4=6, 5=7, 6=8, 7=9, 8=10, 9=J, 10=Q, 11=K, 12=A
+    if 4 <= rank <= 8:  # 6-10
+        return STRATEGY_CONFIG['card_points']['push_cards']
+    elif rank >= 9:  # J-A
+        return STRATEGY_CONFIG['card_points']['high_cards']
+    else:  # 2-5
+        return STRATEGY_CONFIG['card_points']['low_cards']
 
 # Strategy factory - makes it easy to add new strategies
 STRATEGIES = {
     'point': PointStrategy,
-    'conservative': ConservativeStrategy
+    'conservative': ConservativeStrategy,
+    'optimal': OptimalStrategy
 }
 
 def get_strategy(strategy_name='point', config=None):

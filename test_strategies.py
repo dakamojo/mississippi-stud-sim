@@ -14,7 +14,7 @@ import mississippi_stud_sim as sim_module
 
 if __name__ == "__main__":
     print("Testing different strategies with 100 hands each:")
-    print("=" * 50)
+    print("=" * 60)
     
     print("\nPoint Strategy (default):")
     sim_module.simulate(100, show_each_hand=False, strategy_name='point')
@@ -22,5 +22,8 @@ if __name__ == "__main__":
     print("\nConservative Strategy:")
     sim_module.simulate(100, show_each_hand=False, strategy_name='conservative')
     
-    print("\n" + "=" * 50)
-    print("Strategies comparison complete!")
+    print("\nOptimal Strategy:")
+    sim_module.simulate(100, show_each_hand=False, strategy_name='optimal')
+    
+    print("\n" + "=" * 60)
+    print("All strategies comparison complete!")
